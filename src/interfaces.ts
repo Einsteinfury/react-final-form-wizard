@@ -1,56 +1,34 @@
-import type { FormRenderProps } from 'react-final-form';
+import React from 'react';
+import { FormApi } from 'final-form';
+import { FormProps, FormRenderProps } from 'react-final-form';
 
-/**
- * Дополнительные параметры передаваемые в контексте визарда.
- *
- * S - Мапа шагов визарда.
- * */
-export interface IWizardContext<S = string> {
-  /** Нынешний шаг. */
-  currentStep: S;
-  /** Является ли первым шагом. */
-  isFirstStep: boolean;
-  /** Является ли последним шагом. */
-  isLastStep: boolean;
-  /** Изменение нынешнего шага на другой. */
-  setCurrentStep: React.Dispatch<React.SetStateAction<S>>;
-  /** Переход на следующий шаг. */
-  next(): void;
-  /** Переход не предыдущий шаг. */
-  previous(): void;
-}
+export type TStepMap = Record<string, string>;
+export type TStepGeneric = TStepMap | string;
+export type TStep<S extends TStepGeneric = string> = S extends TStepMap
+  ? keyof S
+  : S;
 
-/**
- * Параметры шага вызарда.
- *
- * T – Тип значений формы.
- * S - Мапа шагов визарда.
- * */
-export interface IFormWizardStep<T, S = string> {
-  /** Название шага. */
-  name: S;
-  /** Yup схема валидации. */
-  validationSchema?: any;
-  /** Название шага. Отображается в табах. */
-  title: string;
-  /** Активнсть шага. */
-  disabled?: boolean;
-  /** Страница шага. */
-  page: React.FC<FormWizardRenderProps<T, S>>;
-  /** Хендлер по сабмиту. */
-  onSubmit(values: IWizardContext<S> & T): void;
-}
-
-/**
- * Прокидываемые параметры контента формы. Включает в себя контекст визарда и параметры формы.
- *
- * T – Тип значений формы.
- * S - Мапа шагов визарда.
- * */
-export type FormWizardRenderProps<T, S = string> = FormRenderProps<T> &
+type TFormApi<T, S extends TStepGeneric = string> = FormApi<T> &
   IWizardContext<S>;
 
-export interface RenderNewCompProps<T, S = string> {
-  props: FormRenderProps<T> & IWizardContext<S>;
-  StepPage: React.FC<FormWizardRenderProps<T, S>>;
+export interface IWizardForm<T, S extends TStepGeneric = string>
+  extends FormProps<T> {
+  steps: Array<IFormStep<T, S>>;
+  initialStep?: TStep<S>;
+}
+
+export interface IFormStep<T, S extends TStepGeneric = string> {
+  name: TStep<S>;
+  page: React.FC<FormRenderProps<T> & IWizardContext<S>>;
+  onSubmit?(values: T, form?: TFormApi<T, S>): void;
+  validate?(values: T): Object | Promise<Object>;
+}
+
+export interface IWizardContext<S extends TStepGeneric = string> {
+  currentStep: TStep<S>;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  goToStep(step: TStep<S>): void;
+  goToNextStep(): void;
+  goToPreviousStep(): void;
 }

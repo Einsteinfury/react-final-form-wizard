@@ -1,17 +1,14 @@
 import { useContext } from 'react';
 import { useForm } from 'react-final-form';
 import { FormWizardContext } from './context';
-import type { IWizardContext } from './interfaces';
+import type { IWizardContext, TStepGeneric } from './interfaces';
 
-/**
- * Хук, возвращающий контекст формы и и визарда.
- *
- * T – Тип значений формы.
- * S - Мапа шагов визарда.
- * */
-export const useFormWizard = <T = Record<string, any>, S = string>() => {
+/** A useForm hook with added access to wizard context. */
+export const useFormWizard = <
+  T = Record<string, any>,
+  S extends TStepGeneric = string
+>() => {
   const form = useForm<T>();
-  // Происходит каст из-за прокидывания дженерика.
   const wizardContext = useContext(
     FormWizardContext
   ) as unknown as IWizardContext<S>;

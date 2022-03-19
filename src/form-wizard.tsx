@@ -1,56 +1,71 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import type { FormRenderProps } from 'react-final-form';
-import { Form, FormProps } from 'react-final-form';
+import { FormApi } from 'final-form';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Form, FormRenderProps } from 'react-final-form';
 import { FormWizardContext } from './context';
-import type {
-  FormWizardRenderProps,
-  IFormWizardStep,
-  IWizardContext
-} from './interfaces';
+import { IWizardContext, IWizardForm, TStep, TStepGeneric } from './interfaces';
 
-interface IWizardProps<T, S = string> {
-  steps: Array<IFormWizardStep<T, S>>;
-  renderNew: React.FC<{
-    props: FormRenderProps<T> & IWizardContext<S>;
-    StepPage: React.FC<FormWizardRenderProps<T, S>>;
-  }>;
-  formProps?: Partial<FormProps<T>>;
-}
-
-export const FormWizard = <T, S = string>({
+export const FormWizard = <T, S extends TStepGeneric = string>({
   steps,
-  renderNew,
-  formProps
-}: IWizardProps<T, S>) => {
-  const [currentStep, setCurrentStep] = useState(steps[0].name);
+  initialStep,
+  ...restProps
+}: IWizardForm<T, S>) => {
+  const stepNames = steps.map(({ name }) => name);
 
-  const currentStepIndex = steps.findIndex(step => step.name === currentStep);
+  const [currentStep, setCurrentStep] = useState(
+    initialStep ? stepNames.indexOf(initialStep) : 0
+  );
 
-  const isFirstStep = currentStepIndex === 0;
-  const isLastStep = steps.length - 1 === currentStepIndex;
+  const isFirstStep = currentStep === 0;
+  const isLastStep = currentStep === steps.length - 1;
+
+  const goToNextStep = useCallback(() => {
+    if (!isLastStep) {
+      setCurrentStep(currentStep + 1);
+    }
+  }, [currentStep, isLastStep]);
+
+  const goToPreviousStep = useCallback(() => {
+    if (!isFirstStep) {
+      setCurrentStep(currentStep - 1);
+    }
+  }, [currentStep, isFirstStep]);
+
+  const goToStep = useCallback(
+    (step: TStep<S>) => {
+      const stepIndex = stepNames.indexOf(step);
+      if (stepIndex !== -1) {
+        setCurrentStep(stepIndex);
+      }
+    },
+    [stepNames]
+  );
 
   const wizardContextValues: IWizardContext<S> = useMemo(
     () => ({
-      currentStep,
+      currentStep: stepNames[currentStep],
       isFirstStep,
       isLastStep,
-      setCurrentStep,
-      next: () =>
-        !isLastStep && setCurrentStep(steps[currentStepIndex + 1].name),
-      previous: () =>
-        !isFirstStep && setCurrentStep(steps[currentStepIndex - 1].name)
+      goToStep,
+      goToNextStep,
+      goToPreviousStep,
+      setCurrentStep
     }),
-    [currentStep, currentStepIndex, isFirstStep, isLastStep, steps]
+    [
+      currentStep,
+      goToNextStep,
+      goToPreviousStep,
+      goToStep,
+      isFirstStep,
+      isLastStep,
+      stepNames
+    ]
   );
 
-  const {
-    page: StepPage,
-    validationSchema,
-    onSubmit
-  } = steps[currentStepIndex];
+  const { page: StepPage, onSubmit, validate } = steps[currentStep];
 
   const handleStepSubmit = useCallback(
-    (values: T) => onSubmit({ ...values, ...wizardContextValues }),
+    (values: T, form: FormApi<T, Partial<T>>) =>
+      onSubmit && onSubmit(values, Object.assign(form, wizardContextValues)),
     [onSubmit, wizardContextValues]
   );
 
@@ -59,14 +74,13 @@ export const FormWizard = <T, S = string>({
       value={wizardContextValues as unknown as IWizardContext}
     >
       <Form
-        render={(props: FormRenderProps<T>) =>
-          renderNew({ props: { ...props, ...wizardContextValues }, StepPage })
-        }
-        {...formProps}
+        render={(props: FormRenderProps<T>) => (
+          <StepPage {...wizardContextValues} {...props} />
+        )}
+        {...restProps}
         onSubmit={handleStepSubmit}
+        validate={validate}
       />
     </FormWizardContext.Provider>
   );
 };
-
-FormWizard.displayName = 'FormWizard';
