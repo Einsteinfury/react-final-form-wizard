@@ -1,9 +1,14 @@
 import resolve from '@rollup/plugin-node-resolve';
+import peerDepsExternal from 'rollup-plugin-peer-deps-external';
 import commonjs from '@rollup/plugin-commonjs';
+import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
+import babel from 'rollup-plugin-babel';
 
 const packageJson = require('./package.json');
+
+const external = Object.keys(packageJson.peerDependencies);
 
 export default [
   {
@@ -20,9 +25,13 @@ export default [
         sourcemap: true
       }
     ],
+    external,
     plugins: [
+      peerDepsExternal(),
       resolve(),
+      terser(),
       commonjs(),
+      babel({ exclude: 'node_modules/**' }),
       typescript({ tsconfig: './tsconfig.json' })
     ]
   },
